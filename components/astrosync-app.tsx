@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Copy, Check, UserRound, ScanLine, History, Sparkles, MapPin, CalendarDays, Clock3, ShieldCheck, ChevronDown, ScanQrCode } from 'lucide-react'
 import { calculateCompatibility, calculateApproximateMoonSign, calculateApproximateRisingSign, calculateSunSign, getElementFromSign, type CompatibilityReport, type UserProfile } from '@/lib/zodiac'
 import { decodeProfile, encodeProfile, getProfile, saveProfile } from '@/lib/storage'
+import { Scanner as QRScanner } from "@yudiel/react-qr-scanner"
 
 type Tab = 'profile' | 'scan' | 'history'
 
@@ -56,11 +57,81 @@ function Report({ report }: { report: CompatibilityReport }) {
   return <div className="flex flex-col gap-5"><GlassCard className="flex flex-col items-center p-7 text-center"><p className="text-xs uppercase tracking-[0.22em] text-cyan-300">Your connection</p><h2 className="mt-2 text-2xl font-semibold text-white">A promising alignment</h2><div className="my-6"><ScoreRing score={report.totalScore} /></div><p className="max-w-xs text-sm leading-6 text-slate-400">The stars suggest an easy flow with plenty of room for meaningful growth.</p></GlassCard><GlassCard className="overflow-hidden"><div className="border-b border-white/10 px-5 py-4"><h3 className="font-semibold text-white">Compatibility breakdown</h3><p className="mt-1 text-sm text-slate-400">Three layers of your cosmic connection</p></div>{rows.map((row, index) => <div key={row.title} className="border-b border-white/10 last:border-0"><button onClick={() => setOpen(open === index ? -1 : index)} className="flex w-full items-center gap-3 px-5 py-4 text-left"><span className="grid size-9 place-items-center rounded-xl bg-fuchsia-400/10 text-lg text-fuchsia-200">{row.icon}</span><span className="flex-1"><span className="block text-sm font-medium text-white">{row.title}</span><span className="block text-xs text-slate-500">{row.data.score}% resonance</span></span><ChevronDown className={`size-4 text-slate-500 transition ${open === index ? 'rotate-180' : ''}`} /></button><AnimatePresence>{open === index && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><p className="px-5 pb-4 pl-17 text-sm leading-6 text-slate-400">{row.data.description}</p></motion.div>}</AnimatePresence></div>)}</GlassCard><GlassCard className="p-5"><div className="flex gap-3"><div className="rounded-xl bg-yellow-300/10 p-2.5 text-yellow-200"><Sparkles className="size-4" /></div><div><h3 className="font-medium text-white">Numerology &amp; Life Path Match</h3><p className="mt-1 text-sm text-slate-500">Coming soon — another layer of cosmic insight.</p></div></div></GlassCard></div>
 }
 
-function Scanner({ profile, onMatch }: { profile: UserProfile; onMatch: (report: CompatibilityReport) => void }) {
-  const [value, setValue] = useState('')
-  const [status, setStatus] = useState('idle')
-  const submit = () => { const other = decodeProfile(value.trim()); if (!other) { setStatus('error'); return } onMatch(calculateCompatibility(profile, other)); setStatus('success') }
-  return <div className="flex flex-col gap-5"><GlassCard className="overflow-hidden p-5"><div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-fuchsia-300/25 bg-[#09081a]"><div className="absolute inset-7 rounded-xl border border-cyan-300/20" /><div className="absolute left-1/2 top-1/2 size-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" /><ScanLine className="relative size-20 text-fuchsia-200" /><span className="absolute bottom-5 text-xs uppercase tracking-[0.2em] text-slate-500">Camera scanner ready</span></div><div className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-400"><ShieldCheck className="size-4 text-emerald-300" />Your data stays on this device</div></GlassCard><GlassCard className="p-5"><div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-cyan-300/10 p-2.5 text-cyan-200"><ScanQrCode className="size-4" /></div><div><h3 className="font-medium text-white">Paste a profile code</h3><p className="text-sm text-slate-500">Use the fallback if camera access is unavailable.</p></div></div><textarea value={value} onChange={(e) => { setValue(e.target.value); setStatus('idle') }} placeholder="Paste the shared profile payload here..." className="min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-300/50" /><button onClick={submit} disabled={!value.trim()} className="mt-3 h-12 w-full rounded-2xl bg-cyan-300/15 font-medium text-cyan-100 transition hover:bg-cyan-300/25 disabled:cursor-not-allowed disabled:opacity-40">Find your cosmic sync</button>{status === 'error' && <p className="mt-3 text-center text-sm text-rose-300">That profile code could not be read. Try copying it again.</p>}</GlassCard></div>
+// function Scanner({ profile, onMatch }: { profile: UserProfile; onMatch: (report: CompatibilityReport) => void }) {
+//   const [value, setValue] = useState('')
+//   const [status, setStatus] = useState('idle')
+//   const submit = () => { const other = decodeProfile(value.trim()); if (!other) { setStatus('error'); return } onMatch(calculateCompatibility(profile, other)); setStatus('success') }
+//   return <div className="flex flex-col gap-5"><GlassCard className="overflow-hidden p-5"><div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-fuchsia-300/25 bg-[#09081a]"><div className="absolute inset-7 rounded-xl border border-cyan-300/20" /><div className="absolute left-1/2 top-1/2 size-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" /><ScanLine className="relative size-20 text-fuchsia-200" /><span className="absolute bottom-5 text-xs uppercase tracking-[0.2em] text-slate-500">Camera scanner ready</span></div><div className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-400"><ShieldCheck className="size-4 text-emerald-300" />Your data stays on this device</div></GlassCard><GlassCard className="p-5"><div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-cyan-300/10 p-2.5 text-cyan-200"><ScanQrCode className="size-4" /></div><div><h3 className="font-medium text-white">Paste a profile code</h3><p className="text-sm text-slate-500">Use the fallback if camera access is unavailable.</p></div></div><textarea value={value} onChange={(e) => { setValue(e.target.value); setStatus('idle') }} placeholder="Paste the shared profile payload here..." className="min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-300/50" /><button onClick={submit} disabled={!value.trim()} className="mt-3 h-12 w-full rounded-2xl bg-cyan-300/15 font-medium text-cyan-100 transition hover:bg-cyan-300/25 disabled:cursor-not-allowed disabled:opacity-40">Find your cosmic sync</button>{status === 'error' && <p className="mt-3 text-center text-sm text-rose-300">That profile code could not be read. Try copying it again.</p>}</GlassCard></div>
+// }
+
+function Scanner({
+  profile,
+  onMatch,
+}: {
+  profile: UserProfile
+  onMatch: (report: CompatibilityReport) => void
+}) {
+  const [status, setStatus] = useState("idle")
+
+  const handleScan = (results: any[]) => {
+    if (!results || results.length === 0) return
+
+    const rawValue = results[0]?.rawValue
+    if (!rawValue) return
+
+    const other = decodeProfile(rawValue)
+
+    if (!other) {
+      setStatus("error")
+      return
+    }
+
+    const report = calculateCompatibility(profile, other)
+
+    onMatch(report)
+    setStatus("success")
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <GlassCard className="overflow-hidden p-5">
+        <div className="aspect-square w-full overflow-hidden rounded-2xl">
+          <QRScanner
+            onScan={handleScan}
+            constraints={{ facingMode: "environment" }}
+            styles={{
+              container: {
+                width: "100%",
+                height: "100%",
+              },
+              video: {
+                width: "100%",
+                height: "100%",
+              },
+            }}
+          />
+        </div>
+
+        {status === "error" && (
+          <p className="mt-4 text-sm text-red-400">
+            QR kodu okunamadı.
+          </p>
+        )}
+
+        {status === "success" && (
+          <p className="mt-4 text-sm text-green-400">
+            QR kodu başarıyla okundu!
+          </p>
+        )}
+
+        {status === "idle" && (
+          <p className="mt-4 text-sm text-slate-400">
+            Diğer kişinin AstroSync QR kodunu kameraya göster.
+          </p>
+        )}
+      </GlassCard>
+    </div>
+  )
 }
 
 export default function AstroSyncApp() {
