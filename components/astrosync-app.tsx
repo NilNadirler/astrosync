@@ -142,7 +142,7 @@ function Scanner({
 }
 
 export default function AstroSyncApp() {
-  const [profile, setProfile] = useState<UserProfile | null>(() => null)
+  const [profile, setProfile] = useState<UserProfile | null>(() => getProfile())
   const [tab, setTab] = useState<Tab>('profile')
   const [report, setReport] = useState<CompatibilityReport | null>(null)
   const [editing, setEditing] = useState(false)
