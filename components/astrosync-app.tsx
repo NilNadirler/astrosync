@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { Copy, Check, UserRound, ScanLine, History, Sparkles, MapPin, CalendarDays, Clock3, ShieldCheck, ChevronDown, ScanQrCode } from 'lucide-react'
 import { calculateCompatibility, calculateApproximateMoonSign, calculateApproximateRisingSign, calculateSunSign, getElementFromSign, type CompatibilityReport, type UserProfile } from '@/lib/zodiac'
-import { decodeProfile, encodeProfile, getProfile, saveProfile } from '@/lib/storage'
+import { decodeProfile, encodeProfile, getProfile, saveProfile, saveMatchHistory, getMatchHistory } from '@/lib/storage'
 import { Scanner as QRScanner } from "@yudiel/react-qr-scanner"
 
 type Tab = 'profile' | 'scan' | 'history'
@@ -60,7 +60,13 @@ function Report({ report }: { report: CompatibilityReport }) {
 function ManuelScanner({ profile, onMatch }: { profile: UserProfile; onMatch: (report: CompatibilityReport) => void }) {
   const [value, setValue] = useState('')
   const [status, setStatus] = useState('idle')
-  const submit = () => { const other = decodeProfile(value.trim()); if (!other) { setStatus('error'); return } onMatch(calculateCompatibility(profile, other)); setStatus('success') }
+  const submit = () => { const other = decodeProfile(value.trim()); if (!other) { setStatus('error'); return }
+
+const report = calculateCompatibility(profile, other)
+
+saveMatchHistory(profile, other, report)
+
+onMatch(report); setStatus('success') }
   return <div className="flex flex-col gap-5"><GlassCard className="overflow-hidden p-5">
   <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-fuchsia-300/25 bg-[#09081a]"><div className="absolute inset-7 rounded-xl border border-cyan-300/20" /><div className="absolute left-1/2 top-1/2 size-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" /><ScanLine className="relative size-20 text-fuchsia-200" /><span className="absolute bottom-5 text-xs uppercase tracking-[0.2em] text-slate-500">Camera scanner ready</span></div><div className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-400"><ShieldCheck className="size-4 text-emerald-300" />Your data stays on this device</div></GlassCard><GlassCard className="p-5"><div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-cyan-300/10 p-2.5 text-cyan-200"><ScanQrCode className="size-4" /></div><div>
     <h3 className="font-medium text-white">Paste a profile code</h3><p className="text-sm text-slate-500">Use the fallback if camera access is unavailable.</p></div></div><textarea value={value} onChange={(e) => { setValue(e.target.value); setStatus('idle') }} placeholder="Paste the shared profile payload here..." className="min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-300/50" /><button onClick={submit} disabled={!value.trim()} className="mt-3 h-12 w-full rounded-2xl bg-cyan-300/15 font-medium text-cyan-100 transition hover:bg-cyan-300/25 disabled:cursor-not-allowed disabled:opacity-40">Find your cosmic sync</button>{status === 'error' && <p className="mt-3 text-center text-sm text-rose-300">That profile code could not be read. Try copying it again.</p>}</GlassCard></div>
@@ -90,6 +96,7 @@ function Scanner({
     }
 
     const report = calculateCompatibility(profile, other)
+    saveMatchHistory(profile, other, report)  
 
     onMatch(report)
     setStatus("success")
@@ -146,7 +153,68 @@ export default function AstroSyncApp() {
   const [tab, setTab] = useState<Tab>('profile')
   const [report, setReport] = useState<CompatibilityReport | null>(null)
   const [editing, setEditing] = useState(false)
-  const nav = [{ id: 'profile' as Tab, label: 'Profile', icon: UserRound }, { id: 'scan' as Tab, label: 'Scan QR', icon: ScanLine }, { id: 'history' as Tab, label: 'History', icon: History }]
-  const content = useMemo(() => { if (!profile || editing) return <ProfileForm onComplete={(next) => { setProfile(next); setEditing(false) }} />; if (tab === 'scan') return report ? <Report report={report} /> : <Scanner profile={profile} onMatch={(next) => setReport(next)} />; if (tab === 'history') return <GlassCard className="p-6 text-center"><History className="mx-auto size-10 text-slate-600" /><h2 className="mt-4 text-lg font-medium text-white">Your match history</h2><p className="mt-2 text-sm leading-6 text-slate-500">Scan a profile to start building your cosmic story.</p></GlassCard>; return <ProfileCard profile={profile} onEdit={() => setEditing(true)} /> }, [profile, editing, tab, report])
+  const nav = [{ id: 'profile' as Tab, label: 'Profile', icon: UserRound }, { id: 'scan' as Tab, label: 'Scan QR', icon: ScanLine }, { id: 'history' as Tab, label: 'History', 
+    icon: History }]
+  const content = useMemo(() => { if (!profile || editing) return <ProfileForm onComplete={(next) => { setProfile(next); setEditing(false) }} />; 
+  if (tab === 'scan') return report ? <Report report={report} /> : <Scanner profile={profile} onMatch={(next) => setReport(next)} />; 
+  if (tab === 'history') {
+  const history = getMatchHistory()
+
+  return (
+    <GlassCard className="p-6">
+      <h2 className="text-2xl font-semibold">
+        Match History
+      </h2>
+
+      <p className="mt-2 text-slate-500">
+        Your previous compatibility matches
+      </p>
+
+      {history.length === 0 && (
+        <p className="mt-6 text-slate-400">
+          No match yet.
+        </p>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-6 flex flex-col gap-3">
+          {history.map((match) => (
+            <div
+              key={match.id}
+              className="rounded-xl border border-white/10 bg-white/5 p-4"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-white">
+                    {match.profile1.name} × {match.profile2.name}
+                  </div>
+
+                  <div className="mt-1 text-sm text-slate-400">
+                    {match.profile1.sunSign} × {match.profile2.sunSign}
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-white">
+                    {match.report.totalScore}%
+                  </div>
+
+                  <div className="text-xs text-slate-400">
+                    Compatibility
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+  
+  
+  
+  return <ProfileCard profile={profile} onEdit={() => setEditing(true)} /> }, [profile, editing, tab, report])
   return <main className="min-h-screen overflow-x-hidden bg-[#070619] text-white"><div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(124,58,237,.28),transparent_42%),radial-gradient(circle_at_100%_45%,rgba(34,211,238,.08),transparent_30%)]" /><div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-28 pt-8"><header className="mb-8 flex items-center justify-between"><div><div className="flex items-center gap-2"><div className="grid size-8 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-400 to-violet-600 shadow-[0_0_20px_rgba(192,132,252,.35)]"><Sparkles className="size-4 text-white" /></div><span className="text-lg font-semibold tracking-tight">AstroSync</span></div><p className="mt-2 pl-10 text-xs text-slate-500">Discover your cosmic connection</p></div><div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-xs text-emerald-200">{profile ? 'Profile active' : 'New journey'}</div></header><AnimatePresence mode="wait"><motion.section key={`${tab}-${editing}-${Boolean(report)}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .2 }}>{content}</motion.section></AnimatePresence><nav className="fixed bottom-4 left-1/2 z-10 flex w-[calc(100%-2.5rem)] max-w-lg -translate-x-1/2 rounded-2xl border border-white/10 bg-[#11102a]/90 p-1.5 shadow-2xl backdrop-blur-xl">{nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setTab(id); if (id !== 'scan') setReport(null) }} className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[10px] transition ${tab === id ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}><Icon className="size-4" /><span>{label}</span></button>)}</nav></div></main>
+
 }
